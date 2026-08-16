@@ -19,13 +19,18 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libsqlite3-dev cmake libffi-dev libssl-dev
+          sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libsqlite3-dev cmake libffi-dev libssl-dev build-essential ccache liblld-14
           pip install --upgrade pip setuptools
           pip install buildozer "cython<3.0.0"
 
       - name: Build APK with Buildozer
         run: |
-          yes | buildozer -v android debug
+          # Benutzer erstellen, da Buildozer nicht als root laufen sollte
+          useradd -m user
+          chown -R user:user .
+          
+          # Buildozer im Kontext des Benutzers 'user' ausführen
+          su user -c "APP_ANDROID_ACCEPT_SDK_LICENSES=1 buildozer -v android debug"
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
