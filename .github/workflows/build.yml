@@ -11,11 +11,9 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Build APK with Buildozer
-        uses: digreatbrian/buildozer-action@v2
-        with:
-          python-version: '3.10'
-          buildozer-cmd: 'buildozer -v android debug'
+      - name: Build APK with Docker
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/home/user/hostpython kivy/buildozer buildozer -v android debug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
