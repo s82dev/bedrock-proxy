@@ -13,7 +13,7 @@ jobs:
 
       - name: Build APK with Docker
         run: |
-          docker run --rm -v ${{ github.workspace }}:/home/user/hostpython kivy/buildozer buildozer -v android debug
+          docker run --rm -v ${{ github.workspace }}:/home/user/hostpython --user 1000:1000 kivy/buildozer buildozer -v android debug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
