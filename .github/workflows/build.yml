@@ -1,59 +1,16 @@
-name: Build Android APK
+[app]
+title = Console Proxy
+package.name = consoleproxy
+package.domain = org.bedrock
 
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+source.dir = .
+source.include_exts = py,html,json
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
+version = 1.0
+requirements = python3,requests
 
-    steps:
-      - uses: actions/checkout@v4
+orientation = portrait
+fullscreen = 0
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update -m || true
-          sudo apt-get install -y --no-install-recommends \
-            python3-dev \
-            build-essential \
-            git \
-            libssl-dev \
-            libffi-dev || true
-          pip install --upgrade pip setuptools wheel
-          pip install buildozer cython
-
-      - name: Cache .buildozer
-        uses: actions/cache@v4
-        with:
-          path: ~/.buildozer
-          key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
-          restore-keys: |
-            buildozer-${{ runner.os }}-
-
-      - name: Build APK with Buildozer
-        run: buildozer android debug
-
-      - name: Check build output
-        run: ls -lah bin/ || echo "No bin directory"
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: console-proxy-apk
-          path: bin/*.apk
-          if-no-files-found: ignore
+android.permissions = INTERNET, ACCESS_NETWORK_STATE
+android.accept_sdk_license = True
