@@ -1,16 +1,43 @@
-[app]
-title = Console Proxy
-package.name = consoleproxy
-package.domain = org.bedrock
+name: Build Android APK
 
-source.dir = .
-source.include_exts = py,html,json
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
-version = 1.0
-requirements = python3,requests
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
 
-orientation = portrait
-fullscreen = 0
+    steps:
+      - uses: actions/checkout@v4
 
-android.permissions = INTERNET, ACCESS_NETWORK_STATE
-android.accept_sdk_license = True
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - run: |
+          sudo apt-get update -m || true
+          sudo apt-get install -y build-essential git || true
+          pip install buildozer cython
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.buildozer
+          key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+
+      - run: buildozer android debug
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: console-proxy-apk
+          path: bin/*.apk
+          if-no-files-found: ignore
