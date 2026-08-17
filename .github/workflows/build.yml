@@ -45,14 +45,10 @@ jobs:
             buildozer-${{ runner.os }}-
 
       - name: Build APK with Buildozer
-        run: |
-          buildozer android debug 2>&1 | head -500
-        timeout-minutes: 75
+        run: buildozer android debug
 
-      - name: List build output
-        run: |
-          ls -lah bin/ || echo "No bin directory"
-          find . -name "*.apk" 2>/dev/null || echo "No APK found"
+      - name: Check build output
+        run: ls -lah bin/ || echo "No bin directory"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
