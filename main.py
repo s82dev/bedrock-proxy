@@ -1,12 +1,14 @@
-from http.server import HTTPServer, BaseHTTPRequestHandler
+import os
+import sys
+import json
 import socket
 import threading
-import json
-import os
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 CONFIG_FILE = "servers.json"
 proxy_running = False
 sock_proxy = None
+http_server = None
 
 def load_servers():
     if os.path.exists(CONFIG_FILE):
@@ -31,28 +33,24 @@ def run_udp_proxy():
     try:
         sock_proxy.bind(("0.0.0.0", 19132))
     except Exception as e:
-        print(f"❌ Fehler beim Binden von Port 19132: {e}")
+        print(f"Fehler beim Binden von Port 19132: {e}")
         proxy_running = False
         return
 
     clients = {}
-    print("▶️ Proxy-Engine gestartet...")
-
     while proxy_running:
         try:
             sock_proxy.settimeout(1.0)
             data, addr = sock_proxy.recvfrom(4096)
             
-            # Ping-Antwort für LAN-Spiele Tab
             if data.startswith(b'\x01'):
                 pong = b'\x1c' + data[1:9] + b'\x00\x00\x00\x00\x00\x00\x00\x00'
                 pong += b'\x00\xff\xff\x00\xfe\xfe\xfe\xfe\xfd\xfd\xfd\xfd\x12\x34\x56\x78'
-                motd = f"MCPE;§b{active_server['name']};589;1.20.0;0;10;123456789;World;Creative;1;19132;19132;".encode('utf-8')
+                motd = f"MCPE;{active_server['name']};589;1.20.0;0;10;123456789;World;Creative;1;19132;19132;".encode('utf-8')
                 pong += len(motd).to_bytes(2, 'big') + motd
                 sock_proxy.sendto(pong, addr)
                 continue
 
-            # IP-Adresse auflösen (falls Domain angegeben wurde)
             try:
                 target_ip = socket.gethostbyname(active_server["ip"])
             except:
@@ -81,7 +79,7 @@ HTML_CONTENT = """<!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bedrock Multi-Server Proxy</title>
+    <title>Bedrock Proxy</title>
     <style>
         :root { --bg: #0f111a; --card: #181b28; --accent: #00e676; --danger: #ff5252; --text: #e1e6ed; --border: #23283b; }
         body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; }
@@ -95,15 +93,15 @@ HTML_CONTENT = """<!DOCTYPE html>
 </head>
 <body>
     <div class="container">
-        <h2>🎮 Bedrock Console Proxy</h2>
+        <h2>Bedrock Console Proxy</h2>
         <div class="card">
-            <h3>🌐 Server Auswählen</h3>
+            <h3>Server Auswählen</h3>
             <select id="serverSelect" onchange="selectServer()"></select>
             <br><br>
             <button id="toggleBtn" onclick="toggleProxy()">Proxy Starten</button>
         </div>
         <div class="card">
-            <h3>➕ Neuen Server Hinzufügen</h3>
+            <h3>Neuen Server Hinzufügen</h3>
             <input type="text" id="newName" placeholder="Server Name">
             <input type="text" id="newIp" placeholder="IP / Domain">
             <input type="number" id="newPort" value="19132" placeholder="Port">
@@ -119,7 +117,7 @@ HTML_CONTENT = """<!DOCTYPE html>
                 data.servers.forEach((s, i) => {
                     sel.innerHTML += `<option value="${i}">${s.name} (${s.ip}:${s.port})</option>`;
                 });
-            });
+            }).catch(() => setTimeout(loadServers, 1000));
         }
         function selectServer() {
             const idx = document.getElementById('serverSelect').value;
@@ -145,6 +143,7 @@ HTML_CONTENT = """<!DOCTYPE html>
             });
         }
         window.onload = loadServers;
+        setInterval(loadServers, 5000);
     </script>
 </body>
 </html>"""
@@ -177,10 +176,25 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_response(200); self.send_header("Content-type", "application/json"); self.end_headers()
         self.wfile.write(json.dumps({"running": proxy_running}).encode())
 
+def start_server():
+    global http_server
+    http_server = HTTPServer(("127.0.0.1", 8080), RequestHandler)
+    print("HTTP Server started on http://127.0.0.1:8080")
+    http_server.serve_forever()
+
 if __name__ == "__main__":
-    print("==================================================")
-    print("🚀 WEBSERVER ERFOLGREICH GESTARTET!")
-    print("Klicke auf den Link unten, um das UI zu öffnen:")
-    print("http://localhost:8080")
-    print("==================================================")
-    HTTPServer(("0.0.0.0", 8080), RequestHandler).serve_forever()
+    try:
+        from jnius import autoclass
+        PythonJavaClass = autoclass('org.renpy.android.PythonActivity')
+        print("Running on Android")
+    except:
+        print("Running on Desktop")
+    
+    threading.Thread(target=start_server, daemon=True).start()
+    
+    try:
+        while True:
+            threading.Event().wait(1)
+    except KeyboardInterrupt:
+        if http_server:
+            http_server.shutdown()
